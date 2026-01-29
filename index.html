@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#764ba2">
+    <meta name="description" content="Word/PDF ↔ PNG 이미지 양방향 변환">
+    <title>양방향 파일 변환기</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512x512.png">
+    <link rel="apple-touch-icon" href="icon-192x192.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            color: #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #764ba2;
+        }
+
+        .mode-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            background: #f8f9ff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 30px;
+        }
+
+        .upload-area:hover {
+            background: #f0f2ff;
+            border-color: #764ba2;
+        }
+
+        .upload-area.dragover {
+            background: #e8ebff;
+            border-color: #764ba2;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .options {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 10px;
+        }
+
+        .option-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input[type="number"], select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input[type="number"]:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .btn-convert {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-convert:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-convert:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-download {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-download:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(40, 167, 69, 0.4);
+        }
+
+        .preview-area {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9ff;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .preview-area.active {
+            display: block;
+        }
+
+        .preview-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        #preview {
+            max-width: 100%;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+            display: block;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+            display: block;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #bee5eb;
+            display: block;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 양방향 파일 변환기</h1>
+        <p class="subtitle">Word/PDF ↔ PNG 이미지 양방향 변환</p>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" id="modeToImage" data-mode="toImage">
+                📄 → 🖼️ Word/PDF를 이미지로
+            </button>
+            <button class="mode-btn" id="modeToDoc" data-mode="toDoc">
+                🖼️ → 📄 이미지를 Word/PDF로
+            </button>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text" id="uploadText">파일을 드래그하거나 클릭하여 업로드</div>
+            <div class="upload-hint" id="uploadHint">지원 형식: .docx, .pdf</div>
+            <input type="file" id="fileInput" accept=".docx,.pdf,.png,.jpg,.jpeg">
+        </div>
+
+        <div class="options" id="optionsArea">
+            <div class="option-group" id="scaleGroup">
+                <label for="scale">이미지 스케일 (DPI):</label>
+                <select id="scale">
+                    <option value="1">72 DPI (기본)</option>
+                    <option value="1.5">108 DPI</option>
+                    <option value="2" selected>144 DPI (권장)</option>
+                    <option value="3">216 DPI (고해상도)</option>
+                </select>
+            </div>
+            <div class="option-group" id="formatGroup">
+                <label for="format">출력 형식:</label>
+                <select id="format">
+                    <option value="png" selected>PNG</option>
+                    <option value="jpeg">JPEG</option>
+                </select>
+            </div>
+            <div class="option-group" id="docFormatGroup" style="display: none;">
+                <label for="docFormat">문서 형식:</label>
+                <select id="docFormat">
+                    <option value="docx" selected>Word (.docx)</option>
+                    <option value="pdf">PDF</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn-convert" id="convertBtn" disabled>변환하기</button>
+            <button class="btn-download" id="downloadBtn" disabled style="display: none;">다운로드</button>
+        </div>
+
+        <div class="status" id="status"></div>
+
+        <div class="preview-area" id="previewArea">
+            <div class="preview-title">미리보기:</div>
+            <canvas id="preview"></canvas>
+        </div>
+    </div>
+
+    <!-- PDF.js 라이브러리 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    
+    <!-- mammoth.js 라이브러리 (Word to HTML) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    
+    <!-- html2canvas 라이브러리 (HTML to Canvas) -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    
+    <!-- jsPDF 라이브러리 (PDF 생성) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script>
+        // PDF.js worker 설정
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const convertBtn = document.getElementById('convertBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const previewArea = document.getElementById('previewArea');
+        const preview = document.getElementById('preview');
+        const status = document.getElementById('status');
+        const scaleSelect = document.getElementById('scale');
+        const formatSelect = document.getElementById('format');
+        const docFormatSelect = document.getElementById('docFormat');
+        const uploadText = document.getElementById('uploadText');
+        const uploadHint = document.getElementById('uploadHint');
+        const modeToImage = document.getElementById('modeToImage');
+        const modeToDoc = document.getElementById('modeToDoc');
+        const scaleGroup = document.getElementById('scaleGroup');
+        const formatGroup = document.getElementById('formatGroup');
+        const docFormatGroup = document.getElementById('docFormatGroup');
+
+        let currentFile = null;
+        let convertedData = null;
+        let currentMode = 'toImage'; // 'toImage' or 'toDoc'
+
+        // 모드 전환
+        modeToImage.addEventListener('click', () => {
+            currentMode = 'toImage';
+            modeToImage.classList.add('active');
+            modeToDoc.classList.remove('active');
+            updateUIForMode();
+            resetState();
+        });
+
+        modeToDoc.addEventListener('click', () => {
+            currentMode = 'toDoc';
+            modeToDoc.classList.add('active');
+            modeToImage.classList.remove('active');
+            updateUIForMode();
+            resetState();
+        });
+
+        function updateUIForMode() {
+            if (currentMode === 'toImage') {
+                uploadText.textContent = '파일을 드래그하거나 클릭하여 업로드';
+                uploadHint.textContent = '지원 형식: .docx, .pdf';
+                fileInput.setAttribute('accept', '.docx,.pdf');
+                scaleGroup.style.display = 'block';
+                formatGroup.style.display = 'block';
+                docFormatGroup.style.display = 'none';
+            } else {
+                uploadText.textContent = '이미지 파일을 드래그하거나 클릭하여 업로드';
+                uploadHint.textContent = '지원 형식: .png, .jpg, .jpeg';
+                fileInput.setAttribute('accept', '.png,.jpg,.jpeg');
+                scaleGroup.style.display = 'none';
+                formatGroup.style.display = 'none';
+                docFormatGroup.style.display = 'block';
+            }
+        }
+
+        function resetState() {
+            currentFile = null;
+            convertedData = null;
+            convertBtn.disabled = true;
+            downloadBtn.disabled = true;
+            downloadBtn.style.display = 'none';
+            previewArea.classList.remove('active');
+            fileInput.value = '';
+            status.className = 'status';
+            status.style.display = 'none';
+        }
+
+        // 파일 업로드 영역 클릭
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // 드래그 앤 드롭
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // 파일 선택
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // 파일 처리
+        function handleFile(file) {
+            const fileName = file.name.toLowerCase();
+            let isValid = false;
+
+            if (currentMode === 'toImage') {
+                isValid = fileName.endsWith('.docx') || fileName.endsWith('.pdf');
+                if (!isValid) {
+                    showStatus('지원하지 않는 파일 형식입니다. .docx 또는 .pdf 파일만 업로드 가능합니다.', 'error');
+                    return;
+                }
+            } else {
+                isValid = fileName.endsWith('.png') || fileName.endsWith('.jpg') || fileName.endsWith('.jpeg');
+                if (!isValid) {
+                    showStatus('지원하지 않는 파일 형식입니다. .png, .jpg, .jpeg 파일만 업로드 가능합니다.', 'error');
+                    return;
+                }
+            }
+
+            currentFile = file;
+            convertBtn.disabled = false;
+            downloadBtn.disabled = true;
+            downloadBtn.style.display = 'none';
+            previewArea.classList.remove('active');
+            showStatus(`파일 선택됨: ${file.name}`, 'info');
+        }
+
+        // 변환 버튼 클릭
+        convertBtn.addEventListener('click', async () => {
+            if (!currentFile) return;
+
+            convertBtn.disabled = true;
+            convertBtn.innerHTML = '<span class="loading"></span>변환 중...';
+            
+            try {
+                if (currentMode === 'toImage') {
+                    const fileName = currentFile.name.toLowerCase();
+                    if (fileName.endsWith('.pdf')) {
+                        await convertPDFToPNG(currentFile);
+                    } else if (fileName.endsWith('.docx')) {
+                        await convertWordToPNG(currentFile);
+                    }
+                } else {
+                    await convertImageToDoc(currentFile);
+                }
+            } catch (error) {
+                console.error('변환 오류:', error);
+                showStatus('변환 중 오류가 발생했습니다: ' + error.message, 'error');
+                convertBtn.disabled = false;
+                convertBtn.innerHTML = '변환하기';
+            }
+        });
+
+        // PDF를 PNG로 변환
+        async function convertPDFToPNG(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            const numPages = pdf.numPages;
+            
+            const scale = parseFloat(scaleSelect.value);
+            const format = formatSelect.value;
+            
+            const page = await pdf.getPage(1);
+            const viewport = page.getViewport({ scale: scale * 2 });
+            
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            
+            await page.render({
+                canvasContext: context,
+                viewport: viewport
+            }).promise;
+            
+            convertedData = canvas;
+            displayPreview(canvas);
+            enableImageDownload(canvas, format, file.name);
+            
+            convertBtn.disabled = false;
+            convertBtn.innerHTML = '변환하기';
+            showStatus(`PDF 변환 완료! (총 ${numPages}페이지 중 1페이지 변환됨)`, 'success');
+        }
+
+        // Word를 PNG로 변환
+        async function convertWordToPNG(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
+            const html = result.value;
+            
+            const scale = parseFloat(scaleSelect.value);
+            const format = formatSelect.value;
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.style.position = 'absolute';
+            tempDiv.style.left = '-9999px';
+            tempDiv.style.width = '210mm';
+            tempDiv.style.padding = '20mm';
+            tempDiv.style.background = 'white';
+            tempDiv.style.fontFamily = 'Arial, sans-serif';
+            tempDiv.style.fontSize = '12pt';
+            tempDiv.style.lineHeight = '1.6';
+            tempDiv.innerHTML = html;
+            document.body.appendChild(tempDiv);
+            
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            const canvas = await html2canvas(tempDiv, {
+                scale: scale,
+                backgroundColor: '#ffffff',
+                width: tempDiv.offsetWidth,
+                height: tempDiv.scrollHeight,
+                useCORS: true,
+                logging: false
+            });
+            
+            document.body.removeChild(tempDiv);
+            
+            convertedData = canvas;
+            displayPreview(canvas);
+            enableImageDownload(canvas, format, file.name);
+            
+            convertBtn.disabled = false;
+            convertBtn.innerHTML = '변환하기';
+            showStatus('Word 문서 변환 완료!', 'success');
+        }
+
+        // 이미지를 Word/PDF로 변환
+        async function convertImageToDoc(file) {
+            const format = docFormatSelect.value;
+            
+            // 이미지를 canvas로 로드
+            const img = new Image();
+            const imageUrl = URL.createObjectURL(file);
+            
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+                img.src = imageUrl;
+            });
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            
+            URL.revokeObjectURL(imageUrl);
+            
+            if (format === 'docx') {
+                await convertImageToWord(canvas, file.name);
+            } else {
+                await convertImageToPDF(canvas, file.name);
+            }
+        }
+
+        // 이미지를 Word로 변환 (HTML을 Word 형식으로 저장)
+        async function convertImageToWord(canvas, originalFileName) {
+            try {
+                // canvas를 base64 이미지로 변환
+                const imgData = canvas.toDataURL('image/png');
+                
+                // Word에서 열 수 있는 HTML 형식 생성
+                const htmlContent = `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+    <meta charset="utf-8">
+    <meta name="ProgId" content="Word.Document">
+    <meta name="Generator" content="Microsoft Word">
+    <meta name="Originator" content="Microsoft Word">
+    <title>Document</title>
+    <!--[if gte mso 9]>
+    <xml>
+        <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>100</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+        </w:WordDocument>
+    </xml>
+    <![endif]-->
+    <style>
+        @page {
+            size: A4;
+            margin: 1in;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            page-break-inside: avoid;
+        }
+    </style>
+</head>
+<body>
+    <img src="${imgData}" alt="Image" />
+</body>
+</html>`;
+                
+                // HTML을 Blob으로 변환
+                const blob = new Blob([htmlContent], { 
+                    type: 'application/msword' 
+                });
+                
+                convertedData = blob;
+                
+                // 미리보기 표시
+                displayPreview(canvas);
+                enableDocDownload(blob, 'docx', originalFileName);
+                
+                convertBtn.disabled = false;
+                convertBtn.innerHTML = '변환하기';
+                showStatus('Word 문서 변환 완료! (HTML 형식으로 저장됩니다)', 'success');
+            } catch (error) {
+                console.error('Word 변환 오류:', error);
+                throw new Error('Word 변환 실패: ' + error.message);
+            }
+        }
+
+        // 이미지를 PDF로 변환
+        async function convertImageToPDF(canvas, originalFileName) {
+            try {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({
+                    orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+                    unit: 'px',
+                    format: [canvas.width, canvas.height]
+                });
+                
+                const imgData = canvas.toDataURL('image/png');
+                pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+                
+                const blob = pdf.output('blob');
+                convertedData = blob;
+                
+                // 미리보기 표시
+                displayPreview(canvas);
+                enableDocDownload(blob, 'pdf', originalFileName);
+                
+                convertBtn.disabled = false;
+                convertBtn.innerHTML = '변환하기';
+                showStatus('PDF 변환 완료!', 'success');
+            } catch (error) {
+                throw new Error('PDF 변환 실패: ' + error.message);
+            }
+        }
+
+        // Blob을 Base64로 변환
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        // 미리보기 표시
+        function displayPreview(canvas) {
+            const ctx = preview.getContext('2d');
+            const maxWidth = 800;
+            const maxHeight = 600;
+            let width = canvas.width;
+            let height = canvas.height;
+            
+            if (width > maxWidth) {
+                height = (height * maxWidth) / width;
+                width = maxWidth;
+            }
+            if (height > maxHeight) {
+                width = (width * maxHeight) / height;
+                height = maxHeight;
+            }
+            
+            preview.width = width;
+            preview.height = height;
+            ctx.drawImage(canvas, 0, 0, width, height);
+            previewArea.classList.add('active');
+        }
+
+        // 이미지 다운로드 활성화
+        function enableImageDownload(canvas, format, originalFileName) {
+            downloadBtn.disabled = false;
+            downloadBtn.style.display = 'block';
+            
+            downloadBtn.onclick = () => {
+                const extension = format === 'png' ? 'png' : 'jpg';
+                const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+                const fileName = originalFileName.replace(/\.[^/.]+$/, '') + '.' + extension;
+                
+                canvas.toBlob((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }, mimeType, 0.95);
+            };
+        }
+
+        // 문서 다운로드 활성화
+        function enableDocDownload(blob, format, originalFileName) {
+            downloadBtn.disabled = false;
+            downloadBtn.style.display = 'block';
+            
+            downloadBtn.onclick = () => {
+                let extension, mimeType;
+                if (format === 'docx') {
+                    extension = 'doc'; // HTML 형식이므로 .doc 확장자 사용
+                    mimeType = 'application/msword';
+                } else {
+                    extension = 'pdf';
+                    mimeType = 'application/pdf';
+                }
+                const fileName = originalFileName.replace(/\.[^/.]+$/, '') + '.' + extension;
+                
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                a.click();
+                URL.revokeObjectURL(url);
+            };
+        }
+
+        // 상태 메시지 표시
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = 'status ' + type;
+            status.style.display = 'block';
+        }
+
+        // Service Worker 등록
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then((registration) => {
+                        console.log('Service Worker 등록 성공:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.log('Service Worker 등록 실패:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
